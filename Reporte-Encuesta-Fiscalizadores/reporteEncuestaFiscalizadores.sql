@@ -1,870 +1,155 @@
 SELECT
-        IDPROCESS,
-        NMPROCESS,
-        NMPROCESSMODEL,
-        NMOCCURRENCETYPE,
-        IDSLASTATUS,
-        IDLEVEL,
-        NMDEADLINE,
-        DTSTART,
-        IDSITUATION,
-        NMEVALRESULT,
-        NMUSERSTART,
-        TYPEUSER,
-        IDREVISIONSTATUS,
-        NMREVISIONSTATUS,
-        DTDEADLINEFIELD,
-        IDPROCESSTYPE,
-        IDREVISION,
-        DTFINISH,
-        DTSLAFINISH,
-        FGDEADLINE,
-        FGSLASTATUS,
-        FGSTATUS,
-        FGTYPEUSER 
+/** 
+Creación:  
+06-04-2022. Andrés Del Río. Muestra los resultados de encuestas de fiscalizadores
+Versión: 2.1.6.112
+Ambiente: https://sigse.sernapesca.cl/
+Panel de análisis: REPENCFIS - Reporte de Encuestas Fiscalizadores
+        
+Modificaciones: 
+DD-MM-AAAA. Autor. Descripción.    
+**/
+        ENC.IDPROCESS ID_ENCUESTA,
+        ENC.NMPROCESS TITULO_ENCUESTA,
+        ENC.NMPROCESSMODEL NOMBRE_PROCESO,
+        ENC.IDPROCESSTYPE TIPO_PROCESO,
+        ENC.IDREVISION ID_REVISION_PROCESO,
+        ENC.NMUSERSTART INICIADOR,
+        CASE ENC.FGSTATUS                      
+            WHEN 1 THEN '#{103131}'                      
+            WHEN 2 THEN '#{107788}'                      
+            WHEN 3 THEN '#{104230}'                      
+            WHEN 4 THEN '#{100667}'                      
+            WHEN 5 THEN '#{200712}'          
+        END AS SITUACION,
+        CASE                      
+            WHEN ENC.FGCONCLUDEDSTATUS IS NOT NULL THEN (CASE                          
+                WHEN ENC.FGCONCLUDEDSTATUS=1 THEN '#{100900}'                          
+                WHEN ENC.FGCONCLUDEDSTATUS=2 THEN '#{100899}'                      
+            END)                      
+            ELSE (CASE                          
+                WHEN (( ENC.DTESTIMATEDFINISH > (DATEADD(DAY,
+                COALESCE((SELECT
+                    QTDAYS                          
+                FROM
+                    ADMAILTASKEXEC                          
+                WHERE
+                    CDMAILTASKEXEC=(SELECT
+                        TASK.CDAHEAD                              
+                    FROM
+                        ADMAILTASKREL TASK                              
+                    WHERE
+                        TASK.CDMAILTASKREL=(SELECT
+                            TBL.CDMAILTASKSETTINGS                                  
+                        FROM
+                            CONOTIFICATION TBL))), 0), CAST(<!%TODAY%> AS DATETIME))))                          
+                OR (ENC.DTESTIMATEDFINISH IS NULL)) THEN '#{100900}'                          
+                WHEN (( ENC.DTESTIMATEDFINISH=CAST( dateadd(dd,
+                datediff(dd,
+                0,
+                getDate()),
+                0) AS DATETIME)                          
+                AND ENC.NRTIMEESTFINISH >= (datepart(minute,
+                getdate()) + datepart(hour,
+                getdate()) * 60))                          
+                OR (ENC.DTESTIMATEDFINISH > CAST( dateadd(dd,
+                datediff(dd,
+                0,
+                getDate()),
+                0) AS DATETIME))) THEN '#{201639}'                          
+                ELSE '#{100899}'                      
+            END)                  
+        END AS PLAZO,
+        CONVERT(DATETIME,
+        ENC.DTSTART + ' ' + ENC.TMSTART,
+        120) AS DTSTART,
+        CONVERT(DATETIME,
+        ENC.DTFINISH + ' ' + ENC.TMFINISH,
+        120) AS DTFINISH,
+        REGION.REGION,
+        GRIDENC.IDACTIVIDAD PRESENCIA_TERRENO_COMETIDO,
+        GRIDENC.FECHA,
+        TIPOACT.TIPOACTIVIDAD TIPO_ACTIVIDAD,
+        GRIDENC.NFUNCIONARIOS NUMERO_FUNCIONARIOS,
+        GRIDENC.TOTALFISCALIZ TOTAL_FISCALIZADOS,
+        CASE 
+            WHEN GRIDENC.OTRASINSTITUCIO = 1 THEN 'SI' 
+            WHEN GRIDENC.OTRASINSTITUCIO = 2 THEN 'NO' 
+        END OTRAS_INSTITUCIONES,
+        CASE 
+            WHEN GRIDENC.CARABINEROS = 1 THEN 'SI' 
+            ELSE 'NO' 
+        END CARABINEROS,
+        CASE 
+            WHEN GRIDENC.ARMADA = 1 THEN 'SI' 
+            ELSE 'NO' 
+        END ARMADA,
+        CASE 
+            WHEN GRIDENC.SERVICIODESALUD = 1 THEN 'SI' 
+            ELSE 'NO' 
+        END SERVICIO_SALUD,
+        CASE 
+            WHEN GRIDENC.SERVICIOMEDIOAM = 1 THEN 'SI' 
+            ELSE 'NO' 
+        END SERVICIO_MEDIOAMBIENTAL,
+        CASE 
+            WHEN GRIDENC.OTRO = 1 THEN 'SI' 
+            ELSE 'NO' 
+        END OTRA_INSTITUCION,
+        
+        CASE 
+            WHEN GRIDENC.HALLAZGOS = 1 THEN 'SI'  
+            WHEN GRIDENC.HALLAZGOS = 2 THEN 'NO'  
+        END HALLAZGOS,
+        
+        CASE 
+            WHEN GRIDINCA.INCAUTACION = 1 THEN 'SI'  
+            WHEN GRIDINCA.INCAUTACION = 2 THEN 'NO'  
+        END INCAUTACION,
+        ESPECIE.ESPECIE,
+        GRIDINCA.ESPECIE OTRA_ESPECIE,
+        GRIDINCA.CANTIDAD CANTIDAD_ESPECIE,
+        CASE 
+            WHEN GRIDINCA.INFRACTOR = 1 THEN 'SI' 
+            WHEN GRIDINCA.INFRACTOR = 2 THEN 'NO' 
+        END INFRACTOR_TIENE_ESPECIE,
+        CASE 
+            WHEN GRIDVEHI.VEHICULO = 1 THEN 'SI'  
+            WHEN GRIDVEHI.VEHICULO = 2 THEN 'NO'  
+        END VEHICULO_INCAUTADO,
+        TIPOVEHI.VEHICULO TIPO_VEHICULO,
+        GRIDVEHI.PATENTE,
+        CASE 
+            WHEN GRIDVEHI.PATE = 1 THEN 'SI' 
+            WHEN GRIDVEHI.PATE = 2 THEN 'NO' 
+        END INFRACTOR_TIENE_PATENTE,
+        1 CANTIDAD                                                   
     FROM
-        (SELECT
-            IDPROCESS,
-            NMPROCESS,
-            NMPROCESSMODEL,
-            NMOCCURRENCETYPE,
-            IDSLASTATUS,
-            IDLEVEL,
-            NMDEADLINE,
-            DTSTART,
-            IDSITUATION,
-            NMEVALRESULT,
-            NMUSERSTART,
-            TYPEUSER,
-            IDREVISIONSTATUS,
-            NMREVISIONSTATUS,
-            DTDEADLINEFIELD,
-            IDPROCESSTYPE,
-            IDREVISION,
-            DTFINISH,
-            DTSLAFINISH,
-            FGDEADLINE,
-            FGSLASTATUS,
-            FGSTATUS,
-            FGTYPEUSER 
-        FROM
-            (SELECT
-                1 AS QTD,
-                WFP.IDPROCESS,
-                WFP.NMPROCESS,
-                WFP.NMPROCESSMODEL,
-                WFP.NMUSERSTART,
-                CASE 
-                    WHEN WFP.CDEXTERNALUSERSTART IS NOT NULL THEN '#{303826}' 
-                    WHEN WFP.CDUSERSTART IS NOT NULL THEN '#{305843}' 
-                    ELSE NULL 
-                END AS TYPEUSER,
-                CASE 
-                    WHEN WFP.CDEXTERNALUSERSTART IS NOT NULL THEN 2 
-                    WHEN WFP.CDUSERSTART IS NOT NULL THEN 1 
-                    ELSE NULL 
-                END AS FGTYPEUSER,
-                (SELECT
-                    GNT.NMGENTYPE 
-                FROM
-                    GNGENTYPE GNT 
-                WHERE
-                    WFP.CDWORKFLOWTYPE=GNT.CDGENTYPE) AS NMOCCURRENCETYPE,
-                GNRS.IDREVISIONSTATUS,
-                GNRS.NMREVISIONSTATUS,
-                CASE 
-                    WHEN WFP.FGCONCLUDEDSTATUS IS NOT NULL THEN (CASE 
-                        WHEN WFP.FGCONCLUDEDSTATUS=1 THEN '#{100900}' 
-                        WHEN WFP.FGCONCLUDEDSTATUS=2 THEN '#{100899}' 
-                    END) 
-                    ELSE (CASE 
-                        WHEN (( WFP.DTESTIMATEDFINISH > (DATEADD(DAY,
-                        COALESCE((SELECT
-                            QTDAYS 
-                        FROM
-                            ADMAILTASKEXEC 
-                        WHERE
-                            CDMAILTASKEXEC=(SELECT
-                                TASK.CDAHEAD 
-                            FROM
-                                ADMAILTASKREL TASK 
-                            WHERE
-                                TASK.CDMAILTASKREL=(SELECT
-                                    TBL.CDMAILTASKSETTINGS 
-                                FROM
-                                    CONOTIFICATION TBL))), 0), CAST(<!%TODAY%> AS DATETIME)))) 
-                        OR (WFP.DTESTIMATEDFINISH IS NULL)) THEN '#{100900}' 
-                        WHEN (( WFP.DTESTIMATEDFINISH=CAST( dateadd(dd,
-                        datediff(dd,
-                        0,
-                        getDate()),
-                        0) AS DATETIME) 
-                        AND WFP.NRTIMEESTFINISH >= (datepart(minute,
-                        getdate()) + datepart(hour,
-                        getdate()) * 60)) 
-                        OR (WFP.DTESTIMATEDFINISH > CAST( dateadd(dd,
-                        datediff(dd,
-                        0,
-                        getDate()),
-                        0) AS DATETIME))) THEN '#{201639}' 
-                        ELSE '#{100899}' 
-                    END) 
-                END AS NMDEADLINE,
-                CASE 
-                    WHEN WFP.FGCONCLUDEDSTATUS IS NOT NULL THEN (CASE 
-                        WHEN WFP.FGCONCLUDEDSTATUS=1 THEN 1 
-                        WHEN WFP.FGCONCLUDEDSTATUS=2 THEN 3 
-                    END) 
-                    ELSE (CASE 
-                        WHEN (( WFP.DTESTIMATEDFINISH > (DATEADD(DAY,
-                        COALESCE((SELECT
-                            QTDAYS 
-                        FROM
-                            ADMAILTASKEXEC 
-                        WHERE
-                            CDMAILTASKEXEC=(SELECT
-                                TASK.CDAHEAD 
-                            FROM
-                                ADMAILTASKREL TASK 
-                            WHERE
-                                TASK.CDMAILTASKREL=(SELECT
-                                    TBL.CDMAILTASKSETTINGS 
-                                FROM
-                                    CONOTIFICATION TBL))), 0), CAST( dateadd(dd, datediff(dd,0, getDate()), 0) AS DATETIME)))) 
-                        OR (WFP.DTESTIMATEDFINISH IS NULL)) THEN 1 
-                        WHEN (( WFP.DTESTIMATEDFINISH=CAST( dateadd(dd,
-                        datediff(dd,
-                        0,
-                        getDate()),
-                        0) AS DATETIME) 
-                        AND WFP.NRTIMEESTFINISH >= (datepart(minute,
-                        getdate()) + datepart(hour,
-                        getdate()) * 60)) 
-                        OR (WFP.DTESTIMATEDFINISH > CAST( dateadd(dd,
-                        datediff(dd,
-                        0,
-                        getDate()),
-                        0) AS DATETIME))) THEN 2 
-                        ELSE 3 
-                    END) 
-                END AS FGDEADLINE,
-                WFP.FGSLASTATUS,
-                CASE WFP.FGSLASTATUS 
-                    WHEN 10 THEN '#{218492}' 
-                    WHEN 30 THEN '#{218493}' 
-                    WHEN 40 THEN '#{218494}' 
-                END AS IDSLASTATUS,
-                WFP.FGSTATUS,
-                CASE WFP.FGSTATUS 
-                    WHEN 1 THEN '#{103131}' 
-                    WHEN 2 THEN '#{107788}' 
-                    WHEN 3 THEN '#{104230}' 
-                    WHEN 4 THEN '#{100667}' 
-                    WHEN 5 THEN '#{200712}' 
-                END AS IDSITUATION,
-                GNR.NMEVALRESULT,
-                (SELECT
-                    MAX(IDLEVEL) 
-                FROM
-                    GNSLACTRLHISTORY 
-                WHERE
-                    CDSLACONTROL=WFP.CDSLACONTROL 
-                    AND FGCURRENT=1) AS IDLEVEL,
-                WFP.IDPROCESSTYPE,
-                WFP.IDREVISION,
-                CONVERT(DATETIME,
-                SWITCHOFFSET(CAST(DATEADD(MINUTE,
-                (CAST(SLACTRL.BNSLAFINISH AS BIGINT) / 1000)/60,
-                '1970-01-01') AS DATETIMEOFFSET),
-                '-04:00')) AS DTSLAFINISH,
-                Dateadd(minute,
-                WFP.NRTIMEESTFINISH,
-                WFP.DTESTIMATEDFINISH) AS DTDEADLINEFIELD,
-                CONVERT(DATETIME,
-                WFP.DTSTART + ' ' + WFP.TMSTART,
-                120) AS DTSTART,
-                CONVERT(DATETIME,
-                WFP.DTFINISH + ' ' + WFP.TMFINISH,
-                120) AS DTFINISH 
-            FROM
-                WFPROCESS WFP 
-            LEFT OUTER JOIN
-                GNSLACONTROL SLACTRL 
-                    ON WFP.CDSLACONTROL=SLACTRL.CDSLACONTROL 
-            LEFT OUTER JOIN
-                GNREVISIONSTATUS GNRS 
-                    ON WFP.CDSTATUS=GNRS.CDREVISIONSTATUS 
-            LEFT OUTER JOIN
-                GNEVALRESULTUSED GNRUS 
-                    ON GNRUS.CDEVALRESULTUSED=WFP.CDEVALRSLTPRIORITY 
-            LEFT OUTER JOIN
-                GNEVALRESULT GNR 
-                    ON GNRUS.CDEVALRESULT=GNR.CDEVALRESULT 
-            INNER JOIN
-                (
-                    SELECT
-                        DISTINCT Z.IDOBJECT 
-                    FROM
-                        (SELECT
-                            AUXWFP.IDOBJECT 
-                        FROM
-                            (SELECT
-                                WF.IDPROCESS,
-                                WF.CDACCESSLIST 
-                            FROM
-                                WFPROCSECURITYLIST WF 
-                            INNER JOIN
-                                ADTEAMUSER TM 
-                                    ON WF.CDTEAM=TM.CDTEAM 
-                            WHERE
-                                WF.FGACCESSTYPE=1 
-                                AND TM.CDUSER=1 
-                            UNION
-                            ALL SELECT
-                                WF.IDPROCESS,
-                                WF.CDACCESSLIST 
-                            FROM
-                                WFPROCSECURITYLIST WF 
-                            INNER JOIN
-                                ADUSERDEPTPOS UDP 
-                                    ON WF.CDDEPARTMENT=UDP.CDDEPARTMENT 
-                            WHERE
-                                WF.FGACCESSTYPE=2 
-                                AND UDP.CDUSER=1 
-                            UNION
-                            ALL SELECT
-                                WF.IDPROCESS,
-                                WF.CDACCESSLIST 
-                            FROM
-                                WFPROCSECURITYLIST WF 
-                            INNER JOIN
-                                ADUSERDEPTPOS UDP 
-                                    ON WF.CDDEPARTMENT=UDP.CDDEPARTMENT 
-                                    AND WF.CDPOSITION=UDP.CDPOSITION 
-                            WHERE
-                                WF.FGACCESSTYPE=3 
-                                AND UDP.CDUSER=1 
-                            UNION
-                            ALL SELECT
-                                WF.IDPROCESS,
-                                WF.CDACCESSLIST 
-                            FROM
-                                WFPROCSECURITYLIST WF 
-                            INNER JOIN
-                                ADUSERDEPTPOS UDP 
-                                    ON WF.CDPOSITION=UDP.CDPOSITION 
-                            WHERE
-                                WF.FGACCESSTYPE=4 
-                                AND UDP.CDUSER=1 
-                            UNION
-                            ALL SELECT
-                                WF.IDPROCESS,
-                                WF.CDACCESSLIST 
-                            FROM
-                                WFPROCSECURITYLIST WF 
-                            WHERE
-                                WF.FGACCESSTYPE=5 
-                                AND WF.CDUSER=1 
-                            UNION
-                            ALL SELECT
-                                WF.IDPROCESS,
-                                WF.CDACCESSLIST 
-                            FROM
-                                WFPROCSECURITYLIST WF 
-                            WHERE
-                                WF.FGACCESSTYPE=6 
-                            UNION
-                            ALL SELECT
-                                WF.IDPROCESS,
-                                WF.CDACCESSLIST 
-                            FROM
-                                WFPROCSECURITYLIST WF 
-                            INNER JOIN
-                                ADUSERROLE RL 
-                                    ON RL.CDROLE=WF.CDROLE 
-                            WHERE
-                                WF.FGACCESSTYPE=7 
-                                AND RL.CDUSER=1 
-                            UNION
-                            ALL SELECT
-                                WF.IDPROCESS,
-                                WF.CDACCESSLIST 
-                            FROM
-                                WFPROCSECURITYLIST WF 
-                            INNER JOIN
-                                WFPROCESS WFP 
-                                    ON WFP.IDOBJECT=WF.IDPROCESS 
-                            WHERE
-                                WF.FGACCESSTYPE=30 
-                                AND WFP.CDUSERSTART=1 
-                            UNION
-                            ALL SELECT
-                                WF.IDPROCESS,
-                                WF.CDACCESSLIST 
-                            FROM
-                                WFPROCSECURITYLIST WF 
-                            INNER JOIN
-                                WFPROCESS WFP 
-                                    ON WFP.IDOBJECT=WF.IDPROCESS 
-                            INNER JOIN
-                                ADUSER US 
-                                    ON US.CDUSER=WFP.CDUSERSTART 
-                            WHERE
-                                WF.FGACCESSTYPE=31 
-                                AND US.CDLEADER=1
-                        ) PERM 
-                    INNER JOIN
-                        WFPROCSECURITYCTRL GNASSOC 
-                            ON (
-                                GNASSOC.CDACCESSLIST=PERM.CDACCESSLIST 
-                                AND GNASSOC.IDPROCESS=PERM.IDPROCESS
-                            ) 
-                    INNER JOIN
-                        WFPROCESS AUXWFP 
-                            ON GNASSOC.IDPROCESS=AUXWFP.IDOBJECT 
-                    WHERE
-                        GNASSOC.CDACCESSROLEFIELD IN (
-                            501
-                        ) 
-                        AND AUXWFP.FGSTATUS <= 5 
-                        AND (
-                            AUXWFP.FGMODELWFSECURITY IS NULL 
-                            OR AUXWFP.FGMODELWFSECURITY=0
-                        ) 
-                    UNION
-                    ALL SELECT
-                        PERM99.IDOBJECT 
-                    FROM
-                        (SELECT
-                            WFP.IDOBJECT 
-                        FROM
-                            (SELECT
-                                PP.CDPROC,
-                                PP.CDACCESSLIST 
-                            FROM
-                                PMPROCACCESSLIST PP 
-                            INNER JOIN
-                                ADTEAMUSER TM 
-                                    ON PP.CDTEAM=TM.CDTEAM 
-                            WHERE
-                                PP.FGACCESSTYPE=1 
-                                AND TM.CDUSER=1 
-                            UNION
-                            ALL SELECT
-                                PP.CDPROC,
-                                PP.CDACCESSLIST 
-                            FROM
-                                PMPROCACCESSLIST PP 
-                            INNER JOIN
-                                ADUSERDEPTPOS UDP 
-                                    ON PP.CDDEPARTMENT=UDP.CDDEPARTMENT 
-                            WHERE
-                                PP.FGACCESSTYPE=2 
-                                AND UDP.CDUSER=1 
-                            UNION
-                            ALL SELECT
-                                PP.CDPROC,
-                                PP.CDACCESSLIST 
-                            FROM
-                                PMPROCACCESSLIST PP 
-                            INNER JOIN
-                                ADUSERDEPTPOS UDP 
-                                    ON (
-                                        PP.CDDEPARTMENT=UDP.CDDEPARTMENT 
-                                        AND PP.CDPOSITION=UDP.CDPOSITION
-                                    ) 
-                            WHERE
-                                PP.FGACCESSTYPE=3 
-                                AND UDP.CDUSER=1 
-                            UNION
-                            ALL SELECT
-                                PP.CDPROC,
-                                PP.CDACCESSLIST 
-                            FROM
-                                PMPROCACCESSLIST PP 
-                            INNER JOIN
-                                ADUSERDEPTPOS UDP 
-                                    ON PP.CDPOSITION=UDP.CDPOSITION 
-                            WHERE
-                                PP.FGACCESSTYPE=4 
-                                AND UDP.CDUSER=1 
-                            UNION
-                            ALL SELECT
-                                PP.CDPROC,
-                                PP.CDACCESSLIST 
-                            FROM
-                                PMPROCACCESSLIST PP 
-                            WHERE
-                                PP.FGACCESSTYPE=5 
-                                AND PP.CDUSER=1 
-                            UNION
-                            ALL SELECT
-                                PP.CDPROC,
-                                PP.CDACCESSLIST 
-                            FROM
-                                PMPROCACCESSLIST PP 
-                            WHERE
-                                PP.FGACCESSTYPE=6 
-                            UNION
-                            ALL SELECT
-                                PP.CDPROC,
-                                PP.CDACCESSLIST 
-                            FROM
-                                PMPROCACCESSLIST PP 
-                            INNER JOIN
-                                ADUSERROLE RL 
-                                    ON RL.CDROLE=PP.CDROLE 
-                            WHERE
-                                PP.FGACCESSTYPE=7 
-                                AND RL.CDUSER=1
-                        ) PERM1 
-                    INNER JOIN
-                        PMPROCSECURITYCTRL GNASSOC 
-                            ON (
-                                PERM1.CDACCESSLIST=GNASSOC.CDACCESSLIST 
-                                AND PERM1.CDPROC=GNASSOC.CDPROC
-                            ) 
-                    INNER JOIN
-                        PMACCESSROLEFIELD GNCTRL 
-                            ON GNASSOC.CDACCESSROLEFIELD=GNCTRL.CDACCESSROLEFIELD 
-                    INNER JOIN
-                        PMACTIVITY OBJ 
-                            ON GNASSOC.CDPROC=OBJ.CDACTIVITY 
-                    INNER JOIN
-                        WFPROCESS WFP 
-                            ON WFP.CDPROCESSMODEL=PERM1.CDPROC 
-                    WHERE
-                        GNCTRL.CDRELATEDFIELD IN (
-                            501
-                        ) 
-                        AND (
-                            OBJ.FGUSETYPEACCESS=0 
-                            OR OBJ.FGUSETYPEACCESS IS NULL
-                        ) 
-                        AND WFP.FGMODELWFSECURITY=1 
-                        AND WFP.FGSTATUS <= 5 
-                    UNION
-                    ALL SELECT
-                        PERM2.IDOBJECT 
-                    FROM
-                        (SELECT
-                            WFP.IDOBJECT,
-                            PP.CDPROC,
-                            PP.CDACCESSLIST 
-                        FROM
-                            PMPROCACCESSLIST PP 
-                        INNER JOIN
-                            WFPROCESS WFP 
-                                ON WFP.CDPROCESSMODEL=PP.CDPROC 
-                        WHERE
-                            PP.FGACCESSTYPE=30 
-                            AND WFP.CDUSERSTART=1 
-                            AND WFP.FGMODELWFSECURITY=1 
-                            AND WFP.FGSTATUS <= 5 
-                        UNION
-                        ALL SELECT
-                            WFP.IDOBJECT,
-                            PP.CDPROC,
-                            PP.CDACCESSLIST 
-                        FROM
-                            PMPROCACCESSLIST PP 
-                        INNER JOIN
-                            WFPROCESS WFP 
-                                ON WFP.CDPROCESSMODEL=PP.CDPROC 
-                        INNER JOIN
-                            ADUSER US 
-                                ON US.CDUSER=WFP.CDUSERSTART 
-                        WHERE
-                            PP.FGACCESSTYPE=31 
-                            AND US.CDLEADER=1 
-                            AND WFP.FGMODELWFSECURITY=1 
-                            AND WFP.FGSTATUS <= 5
-                    ) PERM2 
-                INNER JOIN
-                    PMPROCSECURITYCTRL GNASSOC 
-                        ON (
-                            PERM2.CDACCESSLIST=GNASSOC.CDACCESSLIST 
-                            AND PERM2.CDPROC=GNASSOC.CDPROC
-                        ) 
-                INNER JOIN
-                    PMACCESSROLEFIELD GNCTRL 
-                        ON GNASSOC.CDACCESSROLEFIELD=GNCTRL.CDACCESSROLEFIELD 
-                INNER JOIN
-                    PMACTIVITY OBJ 
-                        ON GNASSOC.CDPROC=OBJ.CDACTIVITY 
-                WHERE
-                    GNCTRL.CDRELATEDFIELD IN (
-                        501
-                    ) 
-                    AND (
-                        OBJ.FGUSETYPEACCESS=0 
-                        OR OBJ.FGUSETYPEACCESS IS NULL
-                    )) PERM99 
-            UNION
-            ALL SELECT
-                T.IDOBJECT 
-            FROM
-                (SELECT
-                    PERM.IDOBJECT,
-                    MIN(PERM.FGPERMISSION) AS FGPERMISSION 
-                FROM
-                    (SELECT
-                        WFP.IDOBJECT,
-                        PMA.FGUSETYPEACCESS,
-                        PERM1.FGPERMISSION 
-                    FROM
-                        (SELECT
-                            PM.FGPERMISSION,
-                            PM.CDACTTYPE,
-                            PM.CDACCESSLIST,
-                            TM.CDUSER AS USERCD 
-                        FROM
-                            PMACTTYPESECURLIST PM 
-                        INNER JOIN
-                            ADTEAMUSER TM 
-                                ON PM.CDTEAM=TM.CDTEAM 
-                        WHERE
-                            PM.FGACCESSTYPE=1 
-                            AND TM.CDUSER=1 
-                        UNION
-                        ALL SELECT
-                            PM.FGPERMISSION,
-                            PM.CDACTTYPE,
-                            PM.CDACCESSLIST,
-                            UDP.CDUSER AS USERCD 
-                        FROM
-                            PMACTTYPESECURLIST PM 
-                        INNER JOIN
-                            ADUSERDEPTPOS UDP 
-                                ON PM.CDDEPARTMENT=UDP.CDDEPARTMENT 
-                        WHERE
-                            PM.FGACCESSTYPE=2 
-                            AND UDP.CDUSER=1 
-                        UNION
-                        ALL SELECT
-                            PM.FGPERMISSION,
-                            PM.CDACTTYPE,
-                            PM.CDACCESSLIST,
-                            UDP.CDUSER AS USERCD 
-                        FROM
-                            PMACTTYPESECURLIST PM 
-                        INNER JOIN
-                            ADUSERDEPTPOS UDP 
-                                ON PM.CDDEPARTMENT=UDP.CDDEPARTMENT 
-                                AND PM.CDPOSITION=UDP.CDPOSITION 
-                        WHERE
-                            PM.FGACCESSTYPE=3 
-                            AND UDP.CDUSER=1 
-                        UNION
-                        ALL SELECT
-                            PM.FGPERMISSION,
-                            PM.CDACTTYPE,
-                            PM.CDACCESSLIST,
-                            UDP.CDUSER AS USERCD 
-                        FROM
-                            PMACTTYPESECURLIST PM 
-                        INNER JOIN
-                            ADUSERDEPTPOS UDP 
-                                ON PM.CDPOSITION=UDP.CDPOSITION 
-                        WHERE
-                            PM.FGACCESSTYPE=4 
-                            AND UDP.CDUSER=1 
-                        UNION
-                        ALL SELECT
-                            PM.FGPERMISSION,
-                            PM.CDACTTYPE,
-                            PM.CDACCESSLIST,
-                            PM.CDUSER AS USERCD 
-                        FROM
-                            PMACTTYPESECURLIST PM 
-                        WHERE
-                            PM.FGACCESSTYPE=5 
-                            AND PM.CDUSER=1 
-                        UNION
-                        ALL SELECT
-                            PM.FGPERMISSION,
-                            PM.CDACTTYPE,
-                            PM.CDACCESSLIST,
-                            US.CDUSER AS USERCD 
-                        FROM
-                            PMACTTYPESECURLIST PM CROSS 
-                        JOIN
-                            ADUSER US 
-                        WHERE
-                            PM.FGACCESSTYPE=6 
-                            AND US.CDUSER=1 
-                        UNION
-                        ALL SELECT
-                            PM.FGPERMISSION,
-                            PM.CDACTTYPE,
-                            PM.CDACCESSLIST,
-                            RL.CDUSER AS USERCD 
-                        FROM
-                            PMACTTYPESECURLIST PM 
-                        INNER JOIN
-                            ADUSERROLE RL 
-                                ON RL.CDROLE=PM.CDROLE 
-                        WHERE
-                            PM.FGACCESSTYPE=7 
-                            AND RL.CDUSER=1
-                    ) PERM1 
-                INNER JOIN
-                    PMACTTYPESECURCTRL GNASSOC 
-                        ON (
-                            PERM1.CDACCESSLIST=GNASSOC.CDACCESSLIST 
-                            AND PERM1.CDACTTYPE=GNASSOC.CDACTTYPE
-                        ) 
-                INNER JOIN
-                    PMACCESSROLEFIELD GNCTRL 
-                        ON GNASSOC.CDACCESSROLEFIELD=GNCTRL.CDACCESSROLEFIELD 
-                INNER JOIN
-                    PMACCESSROLEFIELD GNCTRL_F 
-                        ON GNCTRL.CDRELATEDFIELD=GNCTRL_F.CDACCESSROLEFIELD 
-                INNER JOIN
-                    PMACTIVITY PMA 
-                        ON PERM1.CDACTTYPE=PMA.CDACTTYPE 
-                INNER JOIN
-                    WFPROCESS WFP 
-                        ON PMA.CDACTIVITY=WFP.CDPROCESSMODEL 
-                WHERE
-                    GNCTRL_F.CDRELATEDFIELD IN (
-                        501
-                    ) 
-                    AND WFP.FGSTATUS <= 5 
-                    AND PMA.FGUSETYPEACCESS=1 
-                    AND WFP.FGMODELWFSECURITY=1 
-                UNION
-                ALL SELECT
-                    WFP.IDOBJECT,
-                    PMA.FGUSETYPEACCESS,
-                    PERM2.FGPERMISSION 
-                FROM
-                    (SELECT
-                        PM.FGPERMISSION,
-                        PM.CDACTTYPE,
-                        PM.CDACCESSLIST,
-                        PMA.CDCREATEDBY AS USERCD 
-                    FROM
-                        PMACTTYPESECURLIST PM 
-                    INNER JOIN
-                        PMACTIVITY PMA 
-                            ON PM.CDACTTYPE=PMA.CDACTTYPE 
-                    WHERE
-                        PM.FGACCESSTYPE=8 
-                        AND PMA.CDCREATEDBY=1 
-                    UNION
-                    ALL SELECT
-                        PM.FGPERMISSION,
-                        PM.CDACTTYPE,
-                        PM.CDACCESSLIST,
-                        DEP2.CDUSER 
-                    FROM
-                        PMACTTYPESECURLIST PM 
-                    INNER JOIN
-                        PMACTIVITY PMA 
-                            ON PM.CDACTTYPE=PMA.CDACTTYPE 
-                    INNER JOIN
-                        ADUSERDEPTPOS DEP1 
-                            ON DEP1.CDUSER=PMA.CDCREATEDBY 
-                    INNER JOIN
-                        ADUSERDEPTPOS DEP2 
-                            ON DEP2.CDDEPARTMENT=DEP1.CDDEPARTMENT 
-                    WHERE
-                        PM.FGACCESSTYPE=9 
-                        AND DEP2.CDUSER=1 
-                    UNION
-                    ALL SELECT
-                        PM.FGPERMISSION,
-                        PM.CDACTTYPE,
-                        PM.CDACCESSLIST,
-                        DEP2.CDUSER 
-                    FROM
-                        PMACTTYPESECURLIST PM 
-                    INNER JOIN
-                        PMACTIVITY PMA 
-                            ON PM.CDACTTYPE=PMA.CDACTTYPE 
-                    INNER JOIN
-                        ADUSERDEPTPOS DEP1 
-                            ON DEP1.CDUSER=PMA.CDCREATEDBY 
-                    INNER JOIN
-                        ADUSERDEPTPOS DEP2 
-                            ON (
-                                DEP2.CDDEPARTMENT=DEP1.CDDEPARTMENT 
-                                AND DEP2.CDPOSITION=DEP1.CDPOSITION
-                            ) 
-                    WHERE
-                        PM.FGACCESSTYPE=10 
-                        AND DEP2.CDUSER=1 
-                    UNION
-                    ALL SELECT
-                        PM.FGPERMISSION,
-                        PM.CDACTTYPE,
-                        PM.CDACCESSLIST,
-                        DEP2.CDUSER 
-                    FROM
-                        PMACTTYPESECURLIST PM 
-                    INNER JOIN
-                        PMACTIVITY PMA 
-                            ON PM.CDACTTYPE=PMA.CDACTTYPE 
-                    INNER JOIN
-                        ADUSERDEPTPOS DEP1 
-                            ON DEP1.CDUSER=PMA.CDCREATEDBY 
-                    INNER JOIN
-                        ADUSERDEPTPOS DEP2 
-                            ON DEP2.CDPOSITION=DEP1.CDPOSITION 
-                    WHERE
-                        PM.FGACCESSTYPE=11 
-                        AND DEP2.CDUSER=1 
-                    UNION
-                    ALL SELECT
-                        PM.FGPERMISSION,
-                        PM.CDACTTYPE,
-                        PM.CDACCESSLIST,
-                        US.CDLEADER 
-                    FROM
-                        PMACTTYPESECURLIST PM 
-                    INNER JOIN
-                        PMACTIVITY PMA 
-                            ON PM.CDACTTYPE=PMA.CDACTTYPE 
-                    INNER JOIN
-                        ADUSER US 
-                            ON US.CDUSER=PMA.CDCREATEDBY 
-                    WHERE
-                        PM.FGACCESSTYPE=12 
-                        AND US.CDLEADER=1
-                ) PERM2 
-            INNER JOIN
-                PMACTTYPESECURCTRL GNASSOC 
-                    ON (
-                        PERM2.CDACCESSLIST=GNASSOC.CDACCESSLIST 
-                        AND PERM2.CDACTTYPE=GNASSOC.CDACTTYPE
-                    ) 
-            INNER JOIN
-                PMACCESSROLEFIELD GNCTRL 
-                    ON GNASSOC.CDACCESSROLEFIELD=GNCTRL.CDACCESSROLEFIELD 
-            INNER JOIN
-                PMACCESSROLEFIELD GNCTRL_F 
-                    ON GNCTRL.CDRELATEDFIELD=GNCTRL_F.CDACCESSROLEFIELD 
-            INNER JOIN
-                PMACTIVITY PMA 
-                    ON PERM2.CDACTTYPE=PMA.CDACTTYPE 
-            INNER JOIN
-                WFPROCESS WFP 
-                    ON PMA.CDACTIVITY=WFP.CDPROCESSMODEL 
-            WHERE
-                GNCTRL_F.CDRELATEDFIELD IN (
-                    501
-                ) 
-                AND WFP.FGSTATUS <= 5 
-                AND PMA.FGUSETYPEACCESS=1 
-                AND WFP.FGMODELWFSECURITY=1 
-            UNION
-            ALL SELECT
-                PERM3.IDOBJECT,
-                PMA.FGUSETYPEACCESS,
-                PERM3.FGPERMISSION 
-            FROM
-                (SELECT
-                    PM.FGPERMISSION,
-                    PM.CDACTTYPE,
-                    PM.CDACCESSLIST,
-                    WFP.CDUSERSTART AS USERCD,
-                    WFP.IDOBJECT 
-                FROM
-                    PMACTTYPESECURLIST PM 
-                INNER JOIN
-                    PMACTIVITY PMA 
-                        ON PM.CDACTTYPE=PMA.CDACTTYPE 
-                INNER JOIN
-                    WFPROCESS WFP 
-                        ON PMA.CDACTIVITY=WFP.CDPROCESSMODEL 
-                WHERE
-                    PM.FGACCESSTYPE=30 
-                    AND WFP.CDUSERSTART=1 
-                    AND WFP.FGSTATUS <= 5 
-                    AND WFP.FGMODELWFSECURITY=1 
-                UNION
-                ALL SELECT
-                    PM.FGPERMISSION,
-                    PM.CDACTTYPE,
-                    PM.CDACCESSLIST,
-                    US.CDLEADER AS USERCD,
-                    WFP.IDOBJECT 
-                FROM
-                    PMACTTYPESECURLIST PM 
-                INNER JOIN
-                    PMACTIVITY PMA 
-                        ON PM.CDACTTYPE=PMA.CDACTTYPE 
-                INNER JOIN
-                    WFPROCESS WFP 
-                        ON PMA.CDACTIVITY=WFP.CDPROCESSMODEL 
-                INNER JOIN
-                    ADUSER US 
-                        ON US.CDUSER=WFP.CDUSERSTART 
-                WHERE
-                    PM.FGACCESSTYPE=31 
-                    AND US.CDLEADER=1 
-                    AND WFP.FGSTATUS <= 5 
-                    AND WFP.FGMODELWFSECURITY=1
-            ) PERM3 
-        INNER JOIN
-            PMACTTYPESECURCTRL GNASSOC 
-                ON (
-                    PERM3.CDACCESSLIST=GNASSOC.CDACCESSLIST 
-                    AND PERM3.CDACTTYPE=GNASSOC.CDACTTYPE
-                ) 
-        INNER JOIN
-            PMACCESSROLEFIELD GNCTRL 
-                ON GNASSOC.CDACCESSROLEFIELD=GNCTRL.CDACCESSROLEFIELD 
-        INNER JOIN
-            PMACCESSROLEFIELD GNCTRL_F 
-                ON GNCTRL.CDRELATEDFIELD=GNCTRL_F.CDACCESSROLEFIELD 
-        INNER JOIN
-            PMACTIVITY PMA 
-                ON PERM3.CDACTTYPE=PMA.CDACTTYPE 
-        WHERE
-            GNCTRL_F.CDRELATEDFIELD IN (
-                501
-            ) 
-            AND PMA.FGUSETYPEACCESS=1) PERM 
-    GROUP BY
-        PERM.IDOBJECT) T 
-    WHERE
-        T.FGPERMISSION=1 
-    UNION
-    ALL SELECT
-        AUXWFP.IDOBJECT 
-    FROM
-        WFPROCESS AUXWFP 
-    INNER JOIN
-        WFPROCSECURITYLIST WFLIST 
-            ON (
-                AUXWFP.IDOBJECT=WFLIST.IDPROCESS
-            ) 
-    INNER JOIN
-        WFPROCSECURITYCTRL WFCTRL 
-            ON (
-                WFLIST.CDACCESSLIST=WFCTRL.CDACCESSLIST 
-                AND WFLIST.IDPROCESS=WFCTRL.IDPROCESS
-            ) 
-    WHERE
-        WFCTRL.CDACCESSROLEFIELD IN (
-            501
-        ) 
-        AND WFLIST.CDUSER=1 
-        AND WFLIST.FGACCESSTYPE=5 
-        AND WFLIST.FGACCESSEXCEPTION=1 
-        AND AUXWFP.FGSTATUS <= 5
-) Z
-) MYPERM 
-ON (
-WFP.IDOBJECT=MYPERM.IDOBJECT
-) 
-WHERE
-WFP.FGSTATUS <= 5 
-AND WFP.CDPRODAUTOMATION NOT IN (
-160, 202, 275
-) 
-AND WFP.CDPROCESSMODEL=2128
-) TEMPTB0
-) TEMPTB1
+        WFPROCESS ENC                                                                     
+    JOIN
+        GNASSOCFORMREG REG                                                                                                                                     
+            ON ENC.CDASSOCREG = REG.CDASSOC                                                                     
+    JOIN
+        DYNENC FORMENC                           
+            ON REG.OIDENTITYREG=FORMENC.OID                   
+    LEFT JOIN
+        DYNGRIDENC GRIDENC              
+            ON GRIDENC.OIDABCG92P6TRVWZ09 = FORMENC.OID  
+    LEFT JOIN
+        DYNFORMREGION REGION    
+            ON REGION.OID = GRIDENC.OIDABCIF5T4IG3738F  
+    LEFT JOIN
+        DYNFORMTIPOACTIVID TIPOACT    
+            ON TIPOACT.OID = GRIDENC.OIDABC3OKBQSZGOLYR      
+    LEFT JOIN
+        DYNGRIDINCA GRIDINCA    
+            ON GRIDINCA.OIDABCEKFHAFNNAQM9 = GRIDENC.OID      
+    LEFT JOIN
+        DYNFORMESPECIE ESPECIE    
+            ON ESPECIE.OID = GRIDINCA.OIDABC9IO7306SPPT1      
+    LEFT JOIN
+        DYNGRIDVEHI GRIDVEHI    
+            ON GRIDVEHI.OIDABC09LB1O9DIC76 = GRIDENC.OID      
+    LEFT JOIN
+        DYNFORMTIPOVEHICUL TIPOVEHI    
+            ON TIPOVEHI.OID = GRIDVEHI.OIDABCY0L6NP1E9IQD
