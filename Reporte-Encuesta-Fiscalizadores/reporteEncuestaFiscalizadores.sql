@@ -96,12 +96,12 @@ DD-MM-AAAA. Autor. Descripción.
             WHEN GRIDENC.OTRO = 1 THEN 'SI' 
             ELSE 'NO' 
         END OTRA_INSTITUCION,
-        
-        CASE 
+		
+		CASE 
             WHEN GRIDENC.HALLAZGOS = 1 THEN 'SI'  
             WHEN GRIDENC.HALLAZGOS = 2 THEN 'NO'  
         END HALLAZGOS,
-        
+		
         CASE 
             WHEN GRIDINCA.INCAUTACION = 1 THEN 'SI'  
             WHEN GRIDINCA.INCAUTACION = 2 THEN 'NO'  
@@ -153,3 +153,5 @@ DD-MM-AAAA. Autor. Descripción.
     LEFT JOIN
         DYNFORMTIPOVEHICUL TIPOVEHI    
             ON TIPOVEHI.OID = GRIDVEHI.OIDABCY0L6NP1E9IQD
+	WHERE
+		ENC.FGSTATUS <= 5
