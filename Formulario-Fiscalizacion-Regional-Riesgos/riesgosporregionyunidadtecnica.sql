@@ -8,10 +8,12 @@ Ambiente: https://sigse.sernapesca.cl/
 Conjunto de datos: RIESGOS - Riesgos por Región y Unidad Técnica
         
 Modificaciones: 
-DD-MM-AAAA. Autor. Descripción.    
+  
+10-05-2022. Andrés Del Río. Inclusión de campo detalle de conducta. 
 **/
         idmb.idmb,
         idmb.desconducta conducta,
+        idmb.detaconducta detalle_conducta,
         region.idregion id_region,
         region.region,
         unidad.idunidadtecnica id_unidad,
