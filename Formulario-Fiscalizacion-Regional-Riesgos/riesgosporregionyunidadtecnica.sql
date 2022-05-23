@@ -10,10 +10,12 @@ Conjunto de datos: RIESGOS - Riesgos por Región y Unidad Técnica
 Modificaciones: 
   
 10-05-2022. Andrés Del Río. Inclusión de campo detalle de conducta. 
+23-05-2022. Andrés Del Río. Inclusión de campo Área o Actividad Estratégica
 **/
         idmb.idmb,
         idmb.desconducta conducta,
         idmb.detaconducta detalle_conducta,
+        idmb.areactividad area_actividad,
         region.idregion id_region,
         region.region,
         unidad.idunidadtecnica id_unidad,
